@@ -6,11 +6,15 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
+import re
 
+# Set up logging
 logfile = setup_run_logger(level="INFO")
 log = logging.getLogger(__name__)
-ROOT = Path(__file__).resolve().parents[3]   # repo root: adjust if needed
-load_dotenv(ROOT / ".env")                   # load that specific .env
+
+# Load environment variables from .env file
+ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(ROOT / ".env")
 
 #catalogue number
 #cotaloger-possible
@@ -204,3 +208,20 @@ def attachment_to_col_object(file_path, cat_num):
 
     col_obj_id, col_obj_version = api_get_coll_obj_params(s, cat_num, int(os.getenv("API_COLLECTIONID")))
     api_col_obj_attach(s, attachment_resources, col_obj_id, col_obj_version)
+
+#HELPER - check if filename is catalogue number
+def is_filename_cat_num(filename):
+    stem = Path(filename).stem  # e.g. "0123456789AB" from "0123456789AB.jpg"
+
+    # Grab leading digits only (ignore any trailing letters or other chars)
+    m = re.match(r'^(\d+)', stem)
+    numeric = m.group(1) if m else None
+
+    is_valid_cat_num = bool(numeric) and len(numeric) == 10 and numeric.startswith('0')
+    return numeric, is_valid_cat_num
+
+
+def update_file_in_specify(filename, file_path):
+    log.info(f"Checking and updating file {filename} in Specify...")
+    cat_num, is_cat_num = is_filename_cat_num(filename)
+    log.info(f"Extracted catalog number: {cat_num}, is valid: {is_cat_num}")
