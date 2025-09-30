@@ -39,12 +39,12 @@ def sync_files():
             #log.info(f"FILE: {path.name}")      # print p for full path instead of file name
             count += 1
             catalogue_number, valid = validators.is_filename_cat_num(path.name)
-            #if valid is True and validators.has_imageid(path) is False:
-            #    log.info(f"File {path.name} has valid catalogue number and Image ID.")
-            #    client.attachment_to_col_object(path, catalogue_number)
-            has_image_id = validators.read_exif_user_comment(path)
-            if has_image_id:
-                log.info(f"File {path.name} has Image ID.")
-                print(has_image_id)
+            image_id = validators.read_image_id(path)
+            log.info(f"File: {path.name}, Catalogue number: {catalogue_number}, Valid: {valid}, Image id: {image_id}")
+            if valid is True and image_id is None:
+                client.attachment_to_col_object(path, catalogue_number)
+            else:
+                log.info(f"File {path.name} skipped")#, either invalid catalogue number or already has image id.")
+            
 
     log.info(f"Found {count} files under {root}")

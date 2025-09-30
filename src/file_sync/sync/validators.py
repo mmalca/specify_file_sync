@@ -17,58 +17,13 @@ def is_filename_cat_num(filename):
     return cat_num, is_valid_cat_num
 
 
-def has_imageid(file_path):
-    pass
-
-
-def read_image_unique_id(path: str | Path) -> str | None:
-    """
-    Returns the EXIF ImageUniqueID (what Windows shows as 'Image ID')
-    for JPEG/TIFF files, or None if not present / unsupported.
-    """
-    p = Path(path)
-    try:
-        exif = piexif.load(str(p))
-        val = exif.get("Exif", {}).get(piexif.ExifIFD.ImageUniqueID)
-        if val is None:
-            return None
-        if isinstance(val, bytes):
-            return val.decode("ascii", "ignore").strip("\x00").strip()
-        return str(val).strip()
-    except Exception:
-        return None
-
-def has_image_id(path) -> bool:
-    # got = read_image_unique_id(path)
-    # if got is None:
-    #     print("F")
-    #     return False
-    # print("T")
-    # return True
-
-
-    ##########
-    # img = None  # Initialize img to None
-
-    # # Open the image
-    # img = Image.open(path)
-
-    # # Get existing EXIF data or create an empty dict if none exists
-    # exif_data = img.info.get('exif')
-    # if exif_data:
-    #     exif_dict = piexif.load(exif_data)
-    #     print(exif_dict)
-    #     return True
-    ###################
-    pass
-
 PREFIXES = {
     b"ASCII\x00\x00\x00": "ascii",
     b"UNICODE\x00": "utf-16",            # EXIF "Unicode" (UTF-16 LE, no BOM)
     b"JIS\x00\x00\x00\x00\x00": "shift_jis",
 }
 
-def read_exif_user_comment(path: str | Path) -> str | None:
+def read_image_id(path: str | Path) -> str | None:
     """
     Returns the EXIF UserComment (what you wrote as b'ASCII\\0\\0\\0' + bytes),
     or None if missing/unsupported.
@@ -104,9 +59,5 @@ def read_exif_user_comment(path: str | Path) -> str | None:
     # Fallback representation
     return str(raw).strip() or None
 
-
-def has_user_comment(path: str | Path, expected: str) -> bool:
-    val = read_exif_user_comment(path)
-    return val == expected
 
 
