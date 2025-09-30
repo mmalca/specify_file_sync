@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from api import client
-
+from sync import validators
 
 # Set up logging
 logfile = setup_run_logger(level="INFO")
@@ -34,12 +34,17 @@ it = root.rglob("*") if recursive else root.glob("*")
 def sync_files():
     # Scan directory for files
     count = 0
-    for p in it:
-        if p.is_file():
-            log.info(f"FILE: {p.name}")      # print p for full path instead of file name
+    for path in it:
+        if path.is_file():
+            #log.info(f"FILE: {path.name}")      # print p for full path instead of file name
             count += 1
-            print(p)
-            client.update_file_in_specify(p.name, p)
-
+            catalogue_number, valid = validators.is_filename_cat_num(path.name)
+            #if valid is True and validators.has_imageid(path) is False:
+            #    log.info(f"File {path.name} has valid catalogue number and Image ID.")
+            #    client.attachment_to_col_object(path, catalogue_number)
+            has_image_id = validators.read_exif_user_comment(path)
+            if has_image_id:
+                log.info(f"File {path.name} has Image ID.")
+                print(has_image_id)
 
     log.info(f"Found {count} files under {root}")

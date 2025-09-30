@@ -183,18 +183,43 @@ def api_col_obj_attach(session, attach_resources, col_obj_id, col_obj_version):
     response = session.put(url_coll_obj_att, json=json, headers=headers)
     if response.status_code != 200:
         log.error(f"Failed to attach to Collection Object with status code {response.status_code}.")
+        return False
     else:
         log.info("Successfully attached to Collection Object.")
+        return True
 
+def api_col_obj_delete_attach(session, attach_resource_id, col_obj_id, col_obj_version):
+    #working on it on another file
+    pass
+
+def check_filename_attached(session, cat_num, filename):
+    log.info(f"Checking existing attachments for Collection Object {cat_num}...")
+    endp = f"/api/specify/collectionobject/"
+    url_colobj = os.getenv("API_DOMAIN") + endp
+    params = { "catalognumber": cat_num}
+    response = session.get(url_colobj, params=params)
+
+    response_json = response.json()
+    attachments =  response_json["objects"][0]["collectionobjectattachments"]
+    if len(attachments) < 1:
+        log.info(f"No existing attachments found for Collection Object {cat_num}.")
+        return False
+    log.info(f"Found {len(attachments)} existing attachments.")
+    for att in attachments:
+        log.info(f"Attachment ID: {att['id']}, Original Filename: {att['attachment']['origfilename']}, attachmentlocation: {att['attachment']['attachmentlocation']}")
+        if att['attachment']['origfilename'] == filename:
+            log.info(f"File {filename} is already attached to Collection Object {cat_num}.")
+            return True
 
 def attachment_to_col_object(file_path, cat_num):
     log.info(f"Starting attachment process for file {file_path} to catalog number {cat_num}...")
     s = new_session()
 
-    api_login(s)#, username, password, collection_id)
-
-    filename = os.path.basename(file_path)
-    attach_token = api_attach_file_token(s, filename)
+    api_login(s)
+    filename = file_path.name
+    #print(f_n)
+    #filename = os.path.basename(file_path)
+    attach_token = api_attach_file_token(s, filename)#??
     attachmentLocation, token = api_get_upload_params(s, filename)
     upload_settings = api_get_upload_settings(s)
     write_to_asset_url = upload_settings["write"]
@@ -202,26 +227,15 @@ def attachment_to_col_object(file_path, cat_num):
 
     asset_server_upload_attachment(write_to_asset_url, file_path, attachmentLocation, token, collection_asset)
 
-    # currently only one attachment resource
+    # currently implemented for single attachment resource
     attachment_resource = create_attachment_resource(attachmentLocation, filename)
-    attachment_resources = [attachment_resource]  # attachment_resources is a list of attachment resources
+    attachment_resources = [attachment_resource]   # attachment_resources is a list of attachment resources
 
     col_obj_id, col_obj_version = api_get_coll_obj_params(s, cat_num, int(os.getenv("API_COLLECTIONID")))
-    api_col_obj_attach(s, attachment_resources, col_obj_id, col_obj_version)
 
-#HELPER - check if filename is catalogue number
-def is_filename_cat_num(filename):
-    stem = Path(filename).stem  # e.g. "0123456789AB" from "0123456789AB.jpg"
-
-    # Grab leading digits only (ignore any trailing letters or other chars)
-    m = re.match(r'^(\d+)', stem)
-    numeric = m.group(1) if m else None
-
-    is_valid_cat_num = bool(numeric) and len(numeric) == 10 and numeric.startswith('0')
-    return numeric, is_valid_cat_num
+    is_filename_attached = check_filename_attached(s, cat_num, filename)
+    if is_filename_attached:
+        api_col_obj_delete_attach(s, attachment_resource['id'], col_obj_id, col_obj_version)
+    attached = api_col_obj_attach(s, attachment_resources, col_obj_id, col_obj_version)
 
 
-def update_file_in_specify(filename, file_path):
-    log.info(f"Checking and updating file {filename} in Specify...")
-    cat_num, is_cat_num = is_filename_cat_num(filename)
-    log.info(f"Extracted catalog number: {cat_num}, is valid: {is_cat_num}")
