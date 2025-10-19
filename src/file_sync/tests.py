@@ -74,11 +74,13 @@ else:
         print(f"Orig file name: {att['attachment']['origfilename']}")
         print(f"Attachment URI: {att['attachment']['resource_uri']}")
         print(f"Attachment ID: {att['attachment']['id']}")
+        print(f"Resource URI --->: {att['resource_uri']}")
         #params = {"version": att['version']}
         if att['attachment']['origfilename'] == "pic40.jpg":
             #delete 
             print("Would delete attachment here")
-            url=f"{domain}/api/specify/collectionobjectattachment/{att['id']}/"
+            #url=f"{domain}/api/specify/collectionobjectattachment/{att['id']}/"
+            url=f"{domain}{att['resource_uri']}"
             del_response = session.delete(url, headers={"X-CSRFToken": csrf_token})
             print(f"Delete response status code for attachment ID {att['attachment']['id']}:", del_response.status_code)
             print(f"Delete response text for attachment ID {att['attachment']['id']}:", del_response.text)
