@@ -34,12 +34,12 @@ def set_image_id(image_path: Path, attachment_location: str) -> bool:
         # Save with new metadata, preserving quality
         img.save(image_path, exif=exif_bytes, quality=100)
         #TODO: Make sure that image quality is preserved. Check if the file size might by smaller
-        print(f"Added Image ID {attachment_location} to {image_path.name}")
+        #print(f"Added Image ID {attachment_location} to {image_path.name}")
         img.close()
         return True
 
     except Exception as e:
-        print(f"Error setting Image ID for {image_path.name}: {str(e)}")
+        #log.error(f"Error setting Image ID for {image_path.name}: {str(e)}")
         if img:
             img.close()
         return False

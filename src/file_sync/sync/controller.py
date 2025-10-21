@@ -36,7 +36,7 @@ def sync_files():
     count = 0
     for path in it:
         if path.is_file():
-            log.info(f"FILE: {path.name}")
+            log.info(f"\n\t\t\t\t***********************\nFILE: {path.name}")
             count += 1
             catalogue_number, valid = validators.is_filename_cat_num(path.name)
             image_id = validators.read_image_id(path)
@@ -47,7 +47,7 @@ def sync_files():
                         log.info(f"Attachment process completed for file {path.name} to catalog number {catalogue_number}.")
                         # Write image id to file EXIF (comment field)
                         helpers.set_image_id(path, attached_location)
-                        print(f"Set attch_loc {attached_location} to image ID in file EXIF for {path.name}")
+                        log.info(f"Setting attch_loc {attached_location} to image ID in file EXIF for {path.name}")
                 else:
                     log.error(f"Attachment process FAILED for file {path.name} to catalog number {catalogue_number}.")
             else:

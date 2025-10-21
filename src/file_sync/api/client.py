@@ -37,9 +37,8 @@ def api_login(session):#, username, password, collection_id):
     headers = {"X-CSRFToken": csrf_token_login}
 
     response = session.put(login_url, json=login_info, headers=headers)
-    if response.status_code == 200:
+    if response.status_code == 204:
         log.info("Login successful.")
-        log.info(f"Response: {response.text}")
     else:
         log.error(f"Login failed with status code {response.status_code}.")
         if response.text:
@@ -119,10 +118,10 @@ def asset_server_upload_attachment(wr, file_path, attachmentLocation, token, col
         log.error(f"Failed to upload to asset server with status code {response.status_code}.")
         return
     else:
-        log.info("Successfully uploaded to asset server.")
+        log.info("---> Successfully uploaded to asset server.")
         return attachmentLocation
 
-
+### CURRENTLY NOT NEEDED  ###
 def asset_server_delete_attachment(delete_from_asset_url, attachmentLocation, collection_asset, delete_token):
     log.info(f"Deleting {attachmentLocation} from asset server...")
         
@@ -164,6 +163,21 @@ def create_attachment_resource(attachmentlocation, filename):
     return attachmentResource0
 
 
+def get_current_attachment_list(session, cat_num):
+
+    pass
+
+# Add the new attachment resource to the existing list of collectionobjectattachment
+# Returns full list of attachment resources, including the new one
+def create_full_attachment_resource(new_attachment_resource):
+    full_attachment_resources = get_current_attachment_list
+
+    # Get the old attachment resources from the collection object
+
+
+    full_attachment_resources.append(new_attachment_resource)
+    return full_attachment_resources
+
 # Get collection object parameters by catalog number and collection id
 # Returns collection object id and version
 def api_get_coll_obj_params(session, cat_num, collectionid):
@@ -174,13 +188,11 @@ def api_get_coll_obj_params(session, cat_num, collectionid):
     response = session.get(url_colobj, params=params)
     log.debug(f"Response status code: {response.status_code}")
     if response.status_code != 200:
-        log.error(f"Failed to get collection object with status code {response.status_code}.")
+        log.error(f" !!!! Failed to get collection object with status code {response.status_code}.")
         return None, None
 
     col_obj_id = response.json()["objects"][0]["id"]
-    log.info(f"Collection Object ID: {col_obj_id}")
     col_obj_version = response.json()["objects"][0]["version"]
-    log.info(f"Collection Object Version: {col_obj_version}")
 
     return col_obj_id, col_obj_version
 
@@ -202,18 +214,17 @@ def api_col_obj_attach(session, attach_resources, col_obj_id, col_obj_version):
         "version": col_obj_version,
     }
 
-    response = session.put(url_coll_obj_att, json=json, headers=headers)
+    response = session.patch(url_coll_obj_att, json=json, headers=headers)
     if response.status_code != 200:
-        log.error(f"Failed to attach file to Collection Object with status code {response.status_code}.")
+        log.error(f" !!!! Failed to attach file to Collection Object with status code {response.status_code}.")
         log.error(f"Response text: {response.text}")
         return
     else:
-        log.info("Successfully attached file to Collection Object.")
+        log.info("  ----->   Successfully attached file to Collection Object.")
         return col_obj_id
 
 
 def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_url):
-
     params = { "catalognumber": cat_number}
     endp = f"/api/specify/collectionobject/"
     url_colobj = os.getenv("API_DOMAIN") + endp
@@ -225,10 +236,13 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
     collection_obj_id = response_json["objects"][0]["id"]
     col_obj_id = collection_obj_id
     log.info(f"Collection Object {cat_number} ID is: {col_obj_id}")
+    attachment_location = None
 
     if not attachments:
         log.info(f"No attachments found for Collection Object {cat_number}.")
-        return
+        log.debug(f"Attachments list: {attachments}\n")
+        log.debug(f"Response JSON: {response_json}\n")
+        
     else:
         for att in attachments:
             attachment_id = att['id']
@@ -240,8 +254,8 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
  
             if orig_filename == filename:
                 # Delete 
-                log.info(f"Found attachment {attachment_id} with filename {filename} to delete.")
-                
+                log.info(f"Found attachment {attachment_id} with filename {filename}, attachmentlocation {attachment_location} to delete.")
+
                 col_obj_by_id_url = os.getenv("API_DOMAIN") + f"/api/specify/collectionobject/{col_obj_id}/"
                 col_obj_response = session.get(col_obj_by_id_url, headers={"X-CSRFToken": session.cookies.get("csrftoken")})
                 if col_obj_response.status_code != 200:
@@ -251,15 +265,21 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
 
                 # Use the fetched Collection Object resource
                 resource = col_obj_response.json()
+                attach_count_before = len(resource["collectionobjectattachments"])
                 ## current_attachment_to_delete = next((a for a in resource["collectionobjectattachments"] if a.get("id") == attachment_id),None)
                 
                 # Delete only the required attachment by id
                 new_attachments = [a for a in resource.get("collectionobjectattachments", []) if a['id'] != attachment_id]
+                attach_count_after = len(new_attachments)
+                if attach_count_after+1 != attach_count_before:
+                    log.error(f" !!!! Attachment count mismatch after deletion attempt. Aborting update for file {filename}.")
+                    return
                 resource.update({"collectionobjectattachments": new_attachments})
                 
                 update_col_obj_response = session.put(col_obj_by_id_url, json=resource, headers={"X-CSRFToken": session.cookies.get("csrftoken")})
                 if update_col_obj_response.status_code != 200:
-                    log.error(f"Failed to delete img {filename} from Collection Object with status code {update_col_obj_response.status_code}.")
+                    log.error(f" !!!! Failed to delete img {filename} from Collection Object with status code {update_col_obj_response.status_code}.")
+                    log.debug(f"Response text: {update_col_obj_response.text}")
                     return
                 log.info(f"Successfully deleted img {filename} from Collection Object.")
                 
@@ -269,10 +289,11 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
                 ## deleted_from_asset_server = asset_server_delete_attachment(delete_from_asset_url, delete_att_location, os.getenv("API_COLLECTIONASSET"), delete_token)
 
                 # Returns the updated attachment location after uploadded
-                return attachment_location
+                return attachment_location, new_attachments
+    return attachment_location, attachments#########
 
 
-### NOT NEEDED CURRENTLY ###
+### CURRENTLY NOT NEEDED  ###
 def check_filename_attached(session, cat_num, filename):
     log.info(f"Checking existing attachments for Collection Object {cat_num}...")
     endp = f"/api/specify/collectionobject/"
@@ -293,7 +314,7 @@ def check_filename_attached(session, cat_num, filename):
             return True
 
 def attachment_to_col_object(file_path, cat_num):
-    log.info(f"Starting attachment process for file {file_path} to catalog number {cat_num}...")
+    log.info(f"---> Starting attachment process for file {file_path} to catalog number {cat_num}...")
     s = new_session()
 
     api_login(s)
