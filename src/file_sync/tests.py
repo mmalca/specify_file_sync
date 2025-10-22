@@ -1,5 +1,5 @@
 import requests
-
+import json
 
 domain = "https://hujinnhc.specifycloud.org"
 session = requests.Session()
@@ -46,44 +46,49 @@ print("CSRF token after login:", csrf_token)
 
 ################################################################################
 ##### ATTACHMENTS info for specific collection object, by catalogue number #####
+col_obj = ["0001000000", "0001001868", "0001006001", "0001006002"]
+#cat_number = "0001000000"
+for cat_number in col_obj:
+    print(f"\n\n--- Attachments info for catalog number: {cat_number} ---")
+    params = { "catalognumber": cat_number, "collection": collection_id }
+    endp = f"/api/specify/collectionobject/"
+    url_colobj = domain + endp
+    response = session.get(url_colobj, params=params)
+
+    #print("resp data status code:", response.status_code)
+    #print("resp data response:", response.text)
+
+    ### getting information about attachments for this catalog number ###
+    response_json = response.json()
+    attachments =  response_json["objects"][0]["collectionobjectattachments"]
 
 
-cat_number = "0001000000"
-params = { "catalognumber": cat_number}
-endp = f"/api/specify/collectionobject/"
-url_colobj = domain + endp
-response = session.get(url_colobj, params=params)
-
-#print("resp data status code:", response.status_code)
-#print("resp data response:", response.text)
-
-### getting information about attachments for this catalog number ###
-response_json = response.json()
-attachments =  response_json["objects"][0]["collectionobjectattachments"]
-#print("Attachments:", attachments)
-
-if not attachments:
-    print("No attachments found.")
-else:
-    print(f"Number of attachments for catalog number {cat_number} is --> {len(attachments)}")
-    for att in attachments:
-        
-        #print(f"col obj attach: {att['attachment']['collectionobjectattachments']}")
-        print(f"Attachment: {att['id']}")
-        print(f"Attachment location: {att['attachment']['attachmentlocation']}")
-        print(f"Orig file name: {att['attachment']['origfilename']}")
-        print(f"Attachment URI: {att['attachment']['resource_uri']}")
-        print(f"Attachment ID: {att['attachment']['id']}")
-        print(f"Resource URI --->: {att['resource_uri']}")
-        #params = {"version": att['version']}
-        if att['attachment']['origfilename'] == "pic40.jpg":
-            #delete 
-            print("Would delete attachment here")
-            #url=f"{domain}/api/specify/collectionobjectattachment/{att['id']}/"
-            url=f"{domain}{att['resource_uri']}"
-            del_response = session.delete(url, headers={"X-CSRFToken": csrf_token})
-            print(f"Delete response status code for attachment ID {att['attachment']['id']}:", del_response.status_code)
-            print(f"Delete response text for attachment ID {att['attachment']['id']}:", del_response.text)
+    if not attachments:
+        print("No attachments found.")
+        print("\n\nAttachments:", attachments)
+    
+        print(f"\n\nresponse_json:", json.dumps(response_json, indent=2))
+    else:
+        print(f"Number of attachments for catalog number {cat_number} is --> {len(attachments)}")
+        for att in attachments:
+            print(f"\nAttachment ID: {att['attachment']['id']}")
+            print(f"Original file name: {att['attachment']['origfilename']}")
+            #print(f"col obj attach: {att['attachment']['collectionobjectattachments']}")
+            # print(f"Attachment: {att['id']}")
+            # print(f"Attachment location: {att['attachment']['attachmentlocation']}")
+            # print(f"Orig file name: {att['attachment']['origfilename']}")
+            # print(f"Attachment URI: {att['attachment']['resource_uri']}")
+            # print(f"Attachment ID: {att['attachment']['id']}")
+            # print(f"Resource URI --->: {att['resource_uri']}")
+            #params = {"version": att['version']}
+            #if att['attachment']['origfilename'] == "pic40.jpg":
+                #delete 
+                #print("Would delete attachment here")
+                #url=f"{domain}/api/specify/collectionobjectattachment/{att['id']}/"
+                #url=f"{domain}{att['resource_uri']}"
+                #del_response = session.delete(url, headers={"X-CSRFToken": csrf_token})
+                #print(f"Delete response status code for attachment ID {att['attachment']['id']}:", del_response.status_code)
+                #print(f"Delete response text for attachment ID {att['attachment']['id']}:", del_response.text)
 
 
 
