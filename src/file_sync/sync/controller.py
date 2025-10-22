@@ -60,4 +60,4 @@ def sync_files(max_files: int = 100):
                 log.info(f"Processed {count} files; stopping as max_files={max_files} reached.")
                 break
 
-    log.info(f"Found {count} files under {root}")
+    log.info(f"Iterated {count} files under {root}")

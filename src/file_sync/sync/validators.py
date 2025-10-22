@@ -7,6 +7,9 @@ from PIL import Image
 #HELPER - check if filename is catalogue number
 def is_filename_cat_num(filename):
     stem = Path(filename).stem  # e.g. "0123456789AB" from "0123456789AB.jpg"
+    # Skip filenames that contain '+' anywhere in the stem
+    if '+' in stem:
+        return None, False
 
     # Grab leading digits only (ignore any trailing letters or other chars)
     m = re.match(r'^(\d+)', stem)
