@@ -252,9 +252,9 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
             orig_filename = att['attachment']['origfilename']
 
             # Pay attention - there is another attachment id, do not use is it: att['attachment']['id']
- 
-            if orig_filename == filename:
-                # Delete 
+
+            if orig_filename.casefold() == filename.casefold():
+                # Delete
                 log.info(f"Found attachment {attachment_id} with filename {filename}, attachmentlocation {attachment_location} to delete.")
 
                 col_obj_by_id_url = os.getenv("API_DOMAIN") + f"/api/specify/collectionobject/{col_obj_id}/"

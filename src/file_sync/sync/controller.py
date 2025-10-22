@@ -31,7 +31,7 @@ recursive = False
 it = root.rglob("*") if recursive else root.glob("*")
 
 # Scanning files in directory, check in Specify and update if needed
-def sync_files():
+def sync_files(max_files: int = 100):
     # Scan directory for files
     session = client.api_login()
     count = 0
@@ -54,5 +54,10 @@ def sync_files():
             else:
                 log.info(f"File {path.name} skipped")#, either invalid catalogue number or already has image id.")
             
+
+            # Stop after processing max_files files
+            if max_files and count >= max_files:
+                log.info(f"Processed {count} files; stopping as max_files={max_files} reached.")
+                break
 
     log.info(f"Found {count} files under {root}")
