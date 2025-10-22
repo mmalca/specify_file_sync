@@ -46,7 +46,7 @@ print("CSRF token after login:", csrf_token)
 
 ################################################################################
 ##### ATTACHMENTS info for specific collection object, by catalogue number #####
-col_obj = ["0001000000", "0001001868", "0001006001", "0001006002"]
+col_obj = ["0111000000"]
 #cat_number = "0001000000"
 for cat_number in col_obj:
     print(f"\n\n--- Attachments info for catalog number: {cat_number} ---")
@@ -54,12 +54,18 @@ for cat_number in col_obj:
     endp = f"/api/specify/collectionobject/"
     url_colobj = domain + endp
     response = session.get(url_colobj, params=params)
-
+    if response.status_code != 200:
+        print(f"status not 200")
+        continue
     #print("resp data status code:", response.status_code)
     #print("resp data response:", response.text)
 
     ### getting information about attachments for this catalog number ###
-    response_json = response.json()
+    response_json = response.json()["objects"]
+    print(f"Response JSON: {json.dumps(response_json, indent=2)}")
+    if not response_json:
+        print(f"No collection object found for catalog number {cat_number}")
+        continue
     attachments =  response_json["objects"][0]["collectionobjectattachments"]
 
 

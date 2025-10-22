@@ -33,6 +33,7 @@ it = root.rglob("*") if recursive else root.glob("*")
 # Scanning files in directory, check in Specify and update if needed
 def sync_files():
     # Scan directory for files
+    session = client.api_login()
     count = 0
     for path in it:
         if path.is_file():
@@ -42,7 +43,7 @@ def sync_files():
             image_id = validators.read_image_id(path)
             log.info(f"File: {path.name}, Catalogue number: {catalogue_number}, Valid: {valid}, Image id: {image_id}")
             if valid is True and image_id is None:
-                attached_location = client.attachment_to_col_object(path, catalogue_number)
+                attached_location = client.attachment_to_col_object(path, catalogue_number, session)
                 if attached_location:
                         log.info(f"Attachment process completed for file {path.name} to catalog number {catalogue_number}.")
                         # Write image id to file EXIF (comment field)

@@ -25,7 +25,9 @@ def new_session():
 
 
 # Login to Specify API
-def api_login(session):#, username, password, collection_id):
+def api_login():#, username, password, collection_id):
+    session = new_session()
+
     log.info(f"Logging in to Specify API using {os.getenv("API_USER")}...")
     endpoint = "/context/login/"
     login_url = os.getenv("API_DOMAIN") + endpoint   
@@ -39,11 +41,13 @@ def api_login(session):#, username, password, collection_id):
     response = session.put(login_url, json=login_info, headers=headers)
     if response.status_code == 204:
         log.info("Login successful.")
+        return session
     else:
         log.error(f"Login failed with status code {response.status_code}.")
         if response.text:
             log.error(f"Response text: {response.text}")
-
+            return None
+    
 
 # Get upload token for uploading file by file name
 # Returns csrf token
@@ -190,7 +194,9 @@ def api_get_coll_obj_params(session, cat_num, collectionid):
     if response.status_code != 200:
         log.error(f" !!!! Failed to get collection object with status code {response.status_code}.")
         return None, None
-
+    if not response.json()["objects"]:
+        log.error(f" !!!! No collection object found for catalog number {cat_num}.")
+        return None, None
     col_obj_id = response.json()["objects"][0]["id"]
     col_obj_version = response.json()["objects"][0]["version"]
 
@@ -264,8 +270,17 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
                 if (attach_count_after + 1) != attach_count_before:
                     log.error(f" !!!! Attachment count mismatch after deletion attempt. Aborting deletion of file {filename}.")
                     return attachment_location, attachments
-                current_col_obj_json.update({"collectionobjectattachments": new_attachments})
-                deleted_col_obj_response = session.put(col_obj_by_id_url, json=current_col_obj_json, headers={"X-CSRFToken": session.cookies.get("csrftoken")})
+                # Only send the attachments list and the current version to avoid updating other nested tables
+                payload = {
+                    "collectionobjectattachments": new_attachments,
+                    "version": current_col_obj_json.get("version"),
+                }
+                headers = {
+                    "X-CSRFToken": session.cookies.get("csrftoken"),
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                }
+                deleted_col_obj_response = session.put(col_obj_by_id_url, json=payload, headers=headers)
                 if deleted_col_obj_response.status_code != 200:
                     log.error(f" !!!! Failed to delete img {filename} from Collection Object with status code {deleted_col_obj_response.status_code}.")
                     log.debug(f"Response text: {deleted_col_obj_response.text}")
@@ -302,29 +317,31 @@ def check_filename_attached(session, cat_num, filename):
             log.info(f"File {filename} is already attached to Collection Object {cat_num}.")
             return True
 
-def attachment_to_col_object(file_path, cat_num):
+def attachment_to_col_object(file_path, cat_num ,session):
     log.info(f"---> Starting attachment process for file {file_path} to catalog number {cat_num}...")
-    s = new_session()
 
-    api_login(s)
     filename = file_path.name
 
-    attachmentLocation, token = api_get_upload_params(s, filename)
-    upload_settings = api_get_upload_settings(s)
+    attachmentLocation, token = api_get_upload_params(session, filename)
+    upload_settings = api_get_upload_settings(session)
     write_to_asset_url = upload_settings["write"]
     delete_from_asset_url = upload_settings["delete"]
     collection_asset = upload_settings["collection"]
 
+    col_obj_id, col_obj_version = api_get_coll_obj_params(session, cat_num, int(os.getenv("API_COLLECTIONID")))
+    if col_obj_id is None:
+        log.error(f" !!!! Cannot proceed with attachment")
+        return None
     asset_server_upload_attachment(write_to_asset_url, file_path, attachmentLocation, token, collection_asset)
 
     # Currently implemented for single attachment resource
     attachment_resource = create_attachment_resource(attachmentLocation, filename)
     attachment_resources = [attachment_resource]   # attachment_resources is a list of attachment resources
 
-    col_obj_id, col_obj_version = api_get_coll_obj_params(s, cat_num, int(os.getenv("API_COLLECTIONID")))
+    
 
     # Delete the old attachment with the same filename (if exists)
-    deleted_att_location, current_attachments_list = api_col_obj_delete_attach(s, cat_num, filename, delete_from_asset_url)
+    deleted_att_location, current_attachments_list = api_col_obj_delete_attach(session, cat_num, filename, delete_from_asset_url)
     
     # Start with the attachments returned from deletion step
     attachment_resources = current_attachments_list or []
@@ -332,7 +349,7 @@ def attachment_to_col_object(file_path, cat_num):
     # but fetch the authoritative collection object resource first to get up-to-date versions
     col_obj_by_id_url = os.getenv("API_DOMAIN") + f"/api/specify/collectionobject/{col_obj_id}/"
     try:
-        col_obj_response = s.get(col_obj_by_id_url, headers={"X-CSRFToken": s.cookies.get("csrftoken")})
+        col_obj_response = session.get(col_obj_by_id_url, headers={"X-CSRFToken": session.cookies.get("csrftoken")})
     except Exception:
         col_obj_response = None
 
@@ -350,7 +367,7 @@ def attachment_to_col_object(file_path, cat_num):
         attachment_resources.append(attachment_resource)
         log.warning("Could not fetch authoritative collection object before attaching; using local version/list.")
 
-    attached = api_col_obj_attach(s, attachment_resources, col_obj_id, col_obj_version)
+    attached = api_col_obj_attach(session, attachment_resources, col_obj_id, col_obj_version)
     if not attached:
         # log.error(f"Attachment process FAILED for file {file_path} to catalog number {cat_num}.")
         return None
