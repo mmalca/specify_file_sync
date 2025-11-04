@@ -332,8 +332,10 @@ def attachment_to_col_object(file_path, cat_num ,session):
     if col_obj_id is None:
         log.error(f" !!!! Cannot proceed with attachment")
         return None
-    asset_server_upload_attachment(write_to_asset_url, file_path, attachmentLocation, token, collection_asset)
-
+    uploaded_to_asset = asset_server_upload_attachment(write_to_asset_url, file_path, attachmentLocation, token, collection_asset)
+    if not uploaded_to_asset:
+        log.error(f" !!!! Upload to asset server FAILED for file {file_path} to catalog number {cat_num}.")
+        return None
     # Currently implemented for single attachment resource
     attachment_resource = create_attachment_resource(attachmentLocation, filename)
     attachment_resources = [attachment_resource]   # attachment_resources is a list of attachment resources
