@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from api import client
 from sync import validators
 from sync import helpers
+import pandas as pd
 
 
 import csv

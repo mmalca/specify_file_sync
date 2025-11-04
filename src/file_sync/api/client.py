@@ -229,7 +229,7 @@ def api_col_obj_attach(session, attach_resources, col_obj_id, col_obj_version):
         return col_obj_id
 
 
-def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_url):
+def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_url, attachmentLocation=None):
     params = { "catalognumber": cat_number, "collection": int(os.getenv("API_COLLECTIONID")) }
     endp = f"/api/specify/collectionobject/"
     url_colobj = os.getenv("API_DOMAIN") + endp
@@ -252,7 +252,8 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
             orig_filename = att['attachment']['origfilename']
 
             # Pay attention - there is another attachment id, do not use is it: att['attachment']['id']
-
+            if attachmentLocation != None and attachment_location != attachmentLocation:
+                continue
             if orig_filename.casefold() == filename.casefold():
                 # Delete
                 log.info(f"Found attachment {attachment_id} with filename {filename}, attachmentlocation {attachment_location} to delete.")
