@@ -234,7 +234,9 @@ def api_col_obj_delete_attach(session, cat_number, filename, delete_from_asset_u
     endp = f"/api/specify/collectionobject/"
     url_colobj = os.getenv("API_DOMAIN") + endp
     response = session.get(url_colobj, params=params)
-    
+    if len(response.json()["objects"]) == 0:
+        log.error(f" !!!! No collection object found for catalog number {cat_number}.")
+        return None, None
     ### getting information about attachments for this catalog number ###
     current_col_obj_json = response.json()["objects"][0]
     attachments =  current_col_obj_json["collectionobjectattachments"]
