@@ -31,14 +31,6 @@ def fix_delete_image_id_and_unattach():
         catalogue_number = df.iloc[i, 1]   # Column B (1 index)
         filename = df.iloc[i, 2]   # Column C (2 index)
 
-        # image_id = validators.read_image_id(Path(os.getenv("SCAN_DIR") + '\\' + filename))
-        # # Remove Image ID from EXIF
-        # if image_id:
-        #     print(f"Removing Image ID from file EXIF: {attachment_location}")
-        #     cleared_comment = clear_comment_field(filename)
-        #     if cleared_comment:
-        #         count_image_id += 1
-
         # detach from catalogue number in specify
         s = client.api_login()
         x, y = client.api_col_obj_delete_attach(s, catalogue_number, filename, None, attachment_location)

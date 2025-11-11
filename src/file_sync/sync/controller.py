@@ -59,9 +59,16 @@ def sync_files():
                         count_attach += 1
                         log.info(f"Attachment process completed for file {path.name} to catalog number {catalogue_number}.")
                         # Write image id to file EXIF (comment field)
-                        helpers.set_image_id(path, attached_location)
-                        helpers.move_to_uploaded_dir(path)
-                        log.info(f"Setting attch_loc {attached_location} to image ID in file EXIF for {path.name}")
+                        id_set = helpers.set_image_id(path, attached_location)
+                        if id_set:
+                            log.info(f"Image ID {attached_location} is set in EXIF for file {path.name}.")
+                        else:
+                            log.error(f"Failed to set Image ID in EXIF for file {path.name}.")
+                        file_moved = helpers.move_to_uploaded_dir(path)
+                        if file_moved:
+                            log.info(f"File {path.name} moved to uploaded directory.")
+                        else:
+                            log.error(f"Failed to move file {path.name} to uploaded directory.")
                         # Stop iterating once we've reached the attachment limit
                         if ATT_LIMIT and count_attach >= ATT_LIMIT:
                             log.info(f"Attachment limit reached (count_attach={count_attach}); stopping iteration.")

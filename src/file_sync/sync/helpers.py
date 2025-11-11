@@ -105,7 +105,7 @@ def move_to_uploaded_dir(filepath):
     uploaded_dir = Path(os.getenv("UPLOADED_DIR"))
     if not uploaded_dir.exists():
         log.error(f"Uploaded directory does not exist")
-        return
+        return False
 
     # Move the file
     try:
