@@ -3,8 +3,16 @@ from PIL import Image
 import piexif
 import pandas as pd
 import os
+from logs.logging_setup import setup_run_logger
+import logging
+
 from api import client
 from sync import validators
+
+
+# Set up logging
+logfile = setup_run_logger(level="DEBUG")
+log = logging.getLogger(__name__)
 
 XP_COMMENT_TAG = 0x9C9C
 
@@ -93,37 +101,18 @@ def clear_comment_field(filename) -> bool:
     with Image.open(image_path) as img:
         img.save(image_path, exif=exif_bytes)
 
+def move_to_uploaded_dir(filepath):
+    uploaded_dir = Path(os.getenv("UPLOADED_DIR"))
+    if not uploaded_dir.exists():
+        log.error(f"Uploaded directory does not exist")
+        return
 
+    # Move the file
+    try:
+        new_path = uploaded_dir / filepath.name
+        filepath.rename(new_path)
+        return True
+    except Exception as e:
+        log.error(f"Error moving file {filepath.name}: {str(e)}")
+        return False
 
-def fix_delete_image_id_and_unattach():
-    # Load Excel file
-    df = pd.read_excel(f"Z:\\Data\\Herbarium\\VascularPlants\\image_upload_verification\\tofix.xlsx", dtype=str, engine='openpyxl')
-    count_image_id = 0
-    count_unattached = 0
-
-    # Select the column by name (change "ColumnName" to your actual name)
-    for i in range(len(df)):
-        attachment_location = df.iloc[i, 0]   # Column A (0 index)
-        catalogue_number = df.iloc[i, 1]   # Column B (1 index)
-        filename = df.iloc[i, 2]   # Column C (2 index)
-
-        # image_id = validators.read_image_id(Path(os.getenv("SCAN_DIR") + '\\' + filename))
-        # # Remove Image ID from EXIF
-        # if image_id:
-        #     print(f"Removing Image ID from file EXIF: {attachment_location}")
-        #     cleared_comment = clear_comment_field(filename)
-        #     if cleared_comment:
-        #         count_image_id += 1
-
-        # detach from catalogue number in specify
-        s = client.api_login()
-        x, y = client.api_col_obj_delete_attach(s, catalogue_number, filename, None, attachment_location)
-        if x is None and y is None:
-            print (f"Skipping unattaching file {filename} from catalogue number {catalogue_number} in Specify.")
-        else:
-            count_unattached += 1
-            print (f"Unattached file {filename} from catalogue number {catalogue_number} in Specify.")
-    s.close()
-    print(f"\nTotal Image IDs removed from EXIF: {count_image_id}")
-    print(f"Total files unattached in Specify: {count_unattached}") 
-    print("Done.")

@@ -1,5 +1,6 @@
 from api import client
 from sync import validators
+from sync import helpers
 
 import pandas as pd
 from pathlib import Path
@@ -8,7 +9,7 @@ import os
 from logs.logging_setup import setup_run_logger
 import logging
 import re
-
+import glob
 
 # Set up logging
 logfile = setup_run_logger(level="DEBUG")
@@ -355,3 +356,104 @@ def check_files():
             log.info("Missing attachments written to: %s", missing_csv_path)
         except Exception:
             log.exception("Failed to write missing CSV: %s", missing_csv_path)
+
+
+def check_files():
+    scan_root = Path(SCAN_DIR) if SCAN_DIR else root
+    # csv_file = f"Z:\\Data\\Herbarium\\VascularPlants\\attachment_list.csv"
+    # missing_csv_path = csv_file.with_name(csv_file.stem + "_missing.csv")
+    csv_file = Path(r"Z:\Data\Herbarium\VascularPlants\attachment_list.csv")
+    missing_csv_path = csv_file.with_name(csv_file.stem + "_missing.csv")
+
+    if not csv_file.exists():
+        log.error("CSV file not found: %s", csv_file)
+        return
+
+    # Read CSV into memory and build lookup by attachment location (column 0)
+    rows = []
+    attach_index: dict[str, int] = {}
+    try:
+        with csv_file.open(newline="", encoding="utf-8") as fh:
+            reader = csv.reader(fh)
+            for i, row in enumerate(reader):
+                rows.append(row)
+                if len(row) >= 1:
+                    key = row[0].strip()
+                    if key and key not in attach_index:
+                        attach_index[key] = i  # record first occurrence
+    except Exception:
+        log.exception("Failed to read CSV: %s", csv_file)
+        return
+
+    missing: list[tuple[str, str]] = []
+
+    # iterate files in the scan root (non-recursive to match sync_files)
+    for path in scan_root.glob("*"):
+        if not path.is_file():
+            continue
+
+        catalogue_number, valid = validators.is_filename_cat_num(path.name)
+        if not valid:
+            continue
+
+        comment = validators.read_image_id(path)
+        if not comment:
+            continue
+
+        # extract attachment location after "ImageID:" (case-insensitive)
+        m = re.search(r"ImageID:\s*(\S+)", comment, flags=re.IGNORECASE)
+        att_loc = m.group(1).strip() if m else comment.strip()
+        if not att_loc:
+            continue
+
+        # lookup in CSV
+        row_idx = attach_index.get(att_loc)
+        if row_idx is not None:
+            row = rows[row_idx]
+            # get catalogue number from CSV third column if present
+            csv_cat = row[2].strip() if len(row) >= 3 else ""
+            # compare stems (ignore extensions)
+            csv_cat_stem = Path(csv_cat).stem if csv_cat else ""
+            file_cat = catalogue_number or ""
+
+            # Ensure 4th column exists
+            if len(row) < 4:
+                row.extend([""] * (4 - len(row)))
+
+            if csv_cat_stem == file_cat and file_cat != "":
+                row[3] = "att_loc exists, same catalogue numbers"
+            else:
+                # per spec: include catalogue number from the file name in message
+                row[3] = f"att_loc exists, but for catalogue number {file_cat}"
+            rows[row_idx] = row
+        else:
+            # not found -> save for missing CSV
+            missing.append((att_loc, catalogue_number or ""))
+
+    # Write updated CSV back (overwrite original)
+    try:
+        with csv_file.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh)
+            writer.writerows(rows)
+        log.info("Updated CSV written: %s", csv_file)
+    except Exception:
+        log.exception("Failed to write updated CSV: %s", csv_file)
+
+    # Write missing CSV if any missing entries found
+    if missing:
+        try:
+            with missing_csv_path.open("w", newline="", encoding="utf-8") as fh:
+                writer = csv.writer(fh)
+                writer.writerow(["attachment_location", "catalogue_number"])
+                writer.writerows(missing)
+            log.info("Missing attachments written to: %s", missing_csv_path)
+        except Exception:
+            log.exception("Failed to write missing CSV: %s", missing_csv_path)
+
+
+def move_uploaded_files(scan_dir):
+    for file_path in glob.glob(os.path.join(scan_dir, "*")):
+        filepath = Path(file_path)
+        if validators.read_image_id(filepath):
+            helpers.move_to_uploaded_dir(filepath)
+
