@@ -67,7 +67,6 @@ def sync_files():
             count += 1
             log.info(f"\n\t\t\t\t***********************\nFILE ({count}): {path.name}")
             catalogue_number, valid = validators.is_filename_cat_num(path.name)
-            print(catalogue_number)
             image_id = validators.read_image_id(path)
             log.info(f"File: {path.name}, Catalogue number: {catalogue_number}, Valid: {valid}, Image id: {image_id}")
             
@@ -75,7 +74,7 @@ def sync_files():
                 log.info(f"File {path.name} skipped")
                 continue
 
-            if catalogue_number and len(catalogue_number) > 1:
+            if catalogue_number and isinstance(catalogue_number, list):
                 uploaded_all_files = False
                 log.info(f"Multiple catalogue numbers found in filename: {catalogue_number}")
                 splitted = helpers.split_image_multiple_cat_nums(path)
