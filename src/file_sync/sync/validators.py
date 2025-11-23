@@ -7,15 +7,24 @@ from PIL import Image
 #HELPER - check if filename is catalogue number
 def is_filename_cat_num(filename):
     stem = Path(filename).stem  # e.g. "0123456789AB" from "0123456789AB.jpg"
-    # Skip filenames that contain '+' anywhere in the stem
-    if '+' in stem:
-        return None, False
+
+    if '+' in stem and stem[:10].isdigit():
+        catalogue_numbers = []
+        parts = stem.split('+')
+        for p in parts:
+            m = re.match(r'^(\d{10})', p)   # save the first 10 digits only
+            if m:
+                catalogue_numbers.append(m.group(1))
+        if catalogue_numbers:
+            return catalogue_numbers, True
+        else:
+            return None, False
 
     # Grab leading digits only (ignore any trailing letters or other chars)
     m = re.match(r'^(\d+)', stem)
     cat_num = m.group(1) if m else None
 
-    is_valid_cat_num = bool(cat_num) and len(cat_num) == 10 and cat_num.startswith('0')
+    is_valid_cat_num = bool(cat_num) and len(cat_num) == 10
 
     return cat_num, is_valid_cat_num
 

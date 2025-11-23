@@ -115,4 +115,27 @@ def move_to_uploaded_dir(filepath):
     except Exception as e:
         log.error(f"Error moving file {filepath.name}: {str(e)}")
         return False
+    
+def split_image_multiple_cat_nums(image_path: Path) -> bool:
+    """
+    Split an image file into multiple copies based on catalogue numbers in the filename.
+    Each copy is named after its respective catalogue number.
+    """
+    names = []
+    try:
+        stem = image_path.stem
+        names = stem.split('+')
+        for i, base in enumerate(names):
+            names[i] = f"{base}{image_path.suffix}"
+            new_path = image_path.parent / names[i]
+            # Copy the original file to the new filename
+            with image_path.open("rb") as src_file:
+                with new_path.open("wb") as dst_file:
+                    dst_file.write(src_file.read())
+
+    except Exception as e:
+        log.error(f"Error splitting image {image_path.name}: {str(e)}")
+        return None
+    
+    return names
 
